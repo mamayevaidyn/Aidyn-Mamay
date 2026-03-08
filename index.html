@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#050505" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="https://picsum.photos/seed/lumia/192/192" />
+    <title>LUMIA QUANT TERMINAL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      :root {
+        --bg: #050505;
+        --bg-card: #0a0a0a;
+        --line: #1a1a1a;
+        --accent: #3b82f6;
+        --quantum: #8b5cf6;
+        --text-muted: #525252;
+        --text-main: #a3a3a3;
+        --text-bright: #ffffff;
+        --f-mono: 'Space Mono', monospace;
+        --f-sans: 'Inter', sans-serif;
+      }
+      
+      body {
+        background: var(--bg);
+        color: var(--text-main);
+        font-family: var(--f-sans);
+        overflow: hidden;
+      }
+
+      .mono { font-family: var(--f-mono); }
+      .syne { font-family: 'Syne', sans-serif; }
+
+      /* Technical Grid Overlay */
+      body::before {
+        content:'';
+        position:fixed; inset:0;
+        background-image:
+          linear-gradient(var(--line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--line) 1px, transparent 1px);
+        background-size: 60px 60px;
+        pointer-events:none; z-index:0;
+        opacity: 0.5;
+      }
+
+      .terminal-card {
+        background: var(--bg-card);
+        border: 1px solid var(--line);
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.3s ease;
+      }
+
+      .terminal-card:hover {
+        border-color: #262626;
+      }
+
+      /* Hardware-like accents */
+      .hardware-border {
+        border: 1px dashed var(--line);
+      }
+
+      .quantum-accent {
+        border-top: 2px solid var(--quantum);
+      }
+
+      ::-webkit-scrollbar { width: 2px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #262626; }
+
+      @keyframes scanline {
+        0% { transform: translateY(-100%); }
+        100% { transform: translateY(100%); }
+      }
+      .scanline {
+        position: absolute; inset: 0;
+        background: linear-gradient(to bottom, transparent, rgba(59, 130, 246, 0.03), transparent);
+        height: 100px;
+        animation: scanline 8s linear infinite;
+        pointer-events: none;
+      }
+    </style>
+    <script type="importmap">
+    {
+      "imports": {
+        "react/": "https://esm.sh/react@^19.2.4/",
+        "react": "https://esm.sh/react@^19.2.4",
+        "lucide-react": "https://esm.sh/lucide-react@^0.564.0",
+        "@google/genai": "https://esm.sh/@google/genai@^1.41.0",
+        "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+        "recharts": "https://esm.sh/recharts@^3.7.0"
+      }
+    }
+    </script>
+  <link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
