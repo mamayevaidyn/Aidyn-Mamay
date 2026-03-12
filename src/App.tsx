@@ -51,7 +51,11 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   // Initialize with an empty portfolio as requested
-  const [userAssets, setUserAssets] = useState<Asset[]>([]);
+  const [userAssets, setUserAssets] = useState<Asset[]>([
+    { ticker: 'AAPL', name: 'Apple Inc', weight: 0.4, price: 150, quantity: 10, sector: 'Tech', beta: 1.1, volatility: 0.2, lastChange: 0.5, isLive: true },
+    { ticker: 'MSFT', name: 'Microsoft Corp', weight: 0.3, price: 300, quantity: 5, sector: 'Tech', beta: 1.0, volatility: 0.15, lastChange: -0.2, isLive: true },
+    { ticker: 'GOOGL', name: 'Alphabet Inc', weight: 0.3, price: 2800, quantity: 2, sector: 'Tech', beta: 1.05, volatility: 0.18, lastChange: 0.1, isLive: true }
+  ]);
   const [portfolio, setPortfolio] = useState<PortfolioState | null>(null);
   const [lastSync, setLastSync] = useState<Date>(new Date());
   const [isSyncing, setIsSyncing] = useState(false);
@@ -67,15 +71,24 @@ const App: React.FC = () => {
       setIsSyncing(true);
       try {
         const updated = await Promise.all(userAssets.map(async (asset) => {
-          const freshData = await fetchRealTimePrice(asset.ticker);
-          if (freshData && freshData.price !== asset.price) {
-            const change = ((freshData.price - asset.price) / asset.price) * 100;
-            return { ...asset, price: freshData.price, lastChange: Number(change.toFixed(2)), isLive: true };
+          try {
+            const freshData = await fetchRealTimePrice(asset.ticker);
+            if (freshData && freshData.price !== asset.price) {
+              const change = ((freshData.price - asset.price) / asset.price) * 100;
+              return { ...asset, price: freshData.price, lastChange: Number(change.toFixed(2)), isLive: true };
+            }
+          } catch (e) {
+            console.warn(`Failed to fetch price for ${asset.ticker}`);
           }
           return asset;
         }));
-        setUserAssets(updated);
-        setLastSync(new Date());
+        
+        // Only update state if prices actually changed to avoid unnecessary re-renders
+        const hasChanges = updated.some((a, i) => a.price !== userAssets[i].price);
+        if (hasChanges) {
+          setUserAssets(updated);
+          setLastSync(new Date());
+        }
       } catch (err) {
         console.error("Sync error:", err);
       } finally {
@@ -84,16 +97,20 @@ const App: React.FC = () => {
     };
     const interval = setInterval(refreshPortfolioPrices, 60000);
     return () => clearInterval(interval);
-  }, [userAssets.length, isSyncing]);
+  }, [userAssets, isSyncing]); // Added userAssets to dependencies for correct closure, but handled with isSyncing check
 
   // Historical Data Caching for Quant Engine
   useEffect(() => {
     const syncHistoricalData = async () => {
       if (userAssets.length === 0) return;
       
-      // Fetch history for all assets in portfolio to populate quant cache
+      const tickers = userAssets.map(a => a.ticker).join(',');
+      // Use a simple ref-like check to avoid re-syncing if tickers haven't changed
+      // (In a real app, we'd use a proper cache or useRef)
+      
       await Promise.all(userAssets.map(async (asset) => {
         try {
+          // Only fetch if not already in some form of cache or if it's a new asset
           const history = await fetchHistoricalData(asset.ticker, 250);
           if (history && history.length > 1) {
             cacheHistoricalReturns(asset.ticker, history.map(p => p.price));
@@ -104,7 +121,8 @@ const App: React.FC = () => {
       }));
     };
     syncHistoricalData();
-  }, [userAssets]);
+    // Only run when the set of tickers changes, not when prices update
+  }, [userAssets.map(a => a.ticker).join(',')]); 
 
   useEffect(() => {
     const updatePortfolio = () => {

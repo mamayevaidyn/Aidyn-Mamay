@@ -2,6 +2,11 @@ import express from 'express';
 import { createServer as createViteServer } from 'vite';
 import admin from 'firebase-admin';
 import { GoogleGenAI } from '@google/genai';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Initialize Firebase Admin
 let adminInitialized = false;
@@ -42,14 +47,32 @@ async function createServer() {
   // Proxy endpoint for research
   app.post('/api/research', verifyToken, async (req, res) => {
     const { ticker } = req.body;
+    if (!ticker) return res.status(400).json({ error: 'Ticker is required' });
+
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Provide deep institutional research for ${ticker}...`, // Add full prompt here
-        config: { tools: [{ googleSearch: {} }], responseMimeType: "application/json" }
+        contents: `Provide deep institutional research for ${ticker}. Return ONLY a JSON object with keys: summary, sentiment, key_risks (array), and growth_drivers (array).`,
+        config: { 
+          tools: [{ googleSearch: {} }], 
+          responseMimeType: "application/json" 
+        }
       });
-      res.json(JSON.parse(response.text || '{}'));
+
+      const text = response.text;
+      if (!text) {
+        throw new Error('Empty response from AI');
+      }
+
+      try {
+        const cleanedJson = JSON.parse(text.replace(/```json|```/g, '').trim());
+        res.json(cleanedJson);
+      } catch (parseError) {
+        console.error('JSON Parse Error from AI:', text);
+        res.status(500).json({ error: 'AI returned invalid data format', raw: text });
+      }
     } catch (error) {
+      console.error('Research API Error:', error);
       res.status(500).json({ error: 'Failed to fetch research' });
     }
   });
@@ -138,14 +161,23 @@ async function createServer() {
   });
 
 
-  // Create Vite server in middleware mode.
-  const vite = await createViteServer({
-    server: { middlewareMode: true },
-    appType: 'spa'
-  });
-
-  // Use Vite's connect instance as middleware. This will handle SPA fallback.
-  app.use(vite.middlewares);
+  // Vite middleware for development
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { 
+        middlewareMode: true,
+        allowedHosts: true,
+      },
+      appType: 'spa'
+    });
+    app.use(vite.middlewares);
+  } else {
+    // Serve static files in production
+    app.use(express.static(path.join(__dirname, 'dist')));
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+    });
+  }
 
   const PORT = 3000;
   app.listen(PORT, '0.0.0.0', () => {

@@ -1,13 +1,6 @@
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { PortfolioState } from '../types';
-
-// Extend jsPDF with autotable types
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
 
 export const generatePortfolioPDF = async (portfolio: PortfolioState) => {
   try {
@@ -71,18 +64,18 @@ export const generatePortfolioPDF = async (portfolio: PortfolioState) => {
       `$${((a.quantity || 0) * a.price).toLocaleString()}`
     ]);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: currentY + 5,
       head: [['Ticker', 'Name', 'Sector', 'Price', 'Weight', 'Value']],
       body: tableData,
       theme: 'striped',
-      headStyles: { fillStyle: [99, 102, 241], textColor: 255 },
+      headStyles: { fillColor: [99, 102, 241], textColor: 255 },
       styles: { fontSize: 9, cellPadding: 3 },
       margin: { left: margin, right: margin }
     });
 
     // @ts-ignore - autoTable adds lastAutoTable to doc
-    currentY = doc.lastAutoTable.finalY + 20;
+    currentY = (doc as any).lastAutoTable.finalY + 20;
 
     // 4. Risk Analysis
     if (currentY > 240) {
@@ -132,7 +125,7 @@ export const generatePortfolioPDF = async (portfolio: PortfolioState) => {
         return [ticker, ...row.map(v => v.toFixed(2))];
       });
 
-      doc.autoTable({
+      autoTable(doc, {
         startY: currentY + 5,
         head: [['', ...portfolio.correlationMatrix.tickers]],
         body: corrData,

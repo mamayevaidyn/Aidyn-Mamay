@@ -778,7 +778,7 @@ const RiskEngine: React.FC<RiskEngineProps> = ({ portfolio }) => {
                         <XAxis 
                             dataKey="date" 
                             tick={{fontSize: 9, fill: '#525252'}} 
-                            tickFormatter={(val) => new Date(val).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}
+                            tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}
                             minTickGap={40}
                             axisLine={false}
                             tickLine={false}
@@ -793,7 +793,7 @@ const RiskEngine: React.FC<RiskEngineProps> = ({ portfolio }) => {
                             formatCurrency(value),
                             name === 'var95' ? 'VaR (95%)' : name === 'cvar95' ? 'CVaR (Tail)' : 'Portfolio Value'
                           ]}
-                          labelFormatter={(label) => new Date(label).toLocaleDateString()}
+                          labelFormatter={(label) => new Date(label).toLocaleDateString('en-US')}
                         />
                         
                         {/* Regime Backgrounds */}

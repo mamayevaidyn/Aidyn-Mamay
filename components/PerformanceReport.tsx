@@ -103,7 +103,7 @@ const PerformanceReport: React.FC<PerformanceReportProps> = ({ portfolio }) => {
           </div>
           <div className="text-right">
             <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Report ID: {Math.random().toString(36).substring(7).toUpperCase()}</p>
-            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Date: {new Date().toLocaleDateString()}</p>
+            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Date: {new Date().toLocaleDateString('en-US')}</p>
           </div>
         </div>
 

@@ -54,6 +54,13 @@ const Dashboard: React.FC<DashboardProps> = ({ portfolio, setActiveTab }) => {
     return Object.entries(sectors).map(([name, value]) => ({ name, value }));
   }, [portfolio.assets]);
 
+  // Calculate Portfolio NPV
+  const portfolioNPV = useMemo(() => {
+    return portfolio.assets.reduce((sum, a) => sum + ((a.valuation?.intrinsicValue || a.price) * (a.quantity || 0)), 0);
+  }, [portfolio.assets]);
+
+  const npvAlpha = portfolio.totalValue > 0 ? ((portfolioNPV - portfolio.totalValue) / portfolio.totalValue) * 100 : 0;
+
   // Dynamic Signals based on portfolio or market universe
   const neuralSignals = useMemo(() => {
     const sourceAssets = hasAssets ? portfolio.assets : MARKET_UNIVERSE.slice(0, 5);
@@ -159,11 +166,12 @@ const Dashboard: React.FC<DashboardProps> = ({ portfolio, setActiveTab }) => {
             color: portfolio.metrics.volatility > 30 ? 'text-rose-500' : 'text-emerald-500'
           },
           { 
-            label: 'Neural Efficiency', 
-            val: (portfolio.metrics.alpha / (portfolio.metrics.volatility || 1) * 5 + 1).toFixed(2), 
-            sub: 'Sharpe Efficiency', 
-            trend: 'up', 
-            icon: <Zap size={20} className="text-amber-500" /> 
+            label: 'Portfolio NPV', 
+            val: '$' + portfolioNPV.toLocaleString(undefined, { maximumFractionDigits: 0 }), 
+            sub: (npvAlpha >= 0 ? '+' : '') + npvAlpha.toFixed(1) + '% Undervalued', 
+            trend: npvAlpha >= 0 ? 'up' : 'down', 
+            icon: <Target size={20} className="text-amber-500" />,
+            color: npvAlpha > 10 ? 'text-emerald-500' : npvAlpha < -10 ? 'text-rose-500' : 'text-white'
           },
         ].map((m, i) => (
           <motion.div 
@@ -230,7 +238,7 @@ const Dashboard: React.FC<DashboardProps> = ({ portfolio, setActiveTab }) => {
                   fontSize={10}
                   tickFormatter={(str) => {
                     const date = new Date(str);
-                    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                   }}
                   dy={10}
                 />
@@ -464,7 +472,8 @@ const Dashboard: React.FC<DashboardProps> = ({ portfolio, setActiveTab }) => {
                   <tr className="text-[9px] font-black text-slate-600 uppercase tracking-[0.3em] border-b border-white/5 bg-white/[0.005]">
                      <th className="px-6 lg:px-10 py-4 lg:py-6">Instrument</th>
                      <th className="px-6 lg:px-10 py-4 lg:py-6 text-right">Price Chg.</th>
-                     <th className="px-6 lg:px-10 py-4 lg:py-6 text-right">P/L (1D)</th>
+                     <th className="px-6 lg:px-10 py-4 lg:py-6 text-right">NPV (Target)</th>
+                     <th className="px-6 lg:px-10 py-4 lg:py-6 text-right">Safety</th>
                      <th className="px-6 lg:px-10 py-4 lg:py-6 text-right">Market Value</th>
                      <th className="px-6 lg:px-10 py-4 lg:py-6 text-right pr-6 lg:pr-10">Weight</th>
                   </tr>
@@ -491,8 +500,11 @@ const Dashboard: React.FC<DashboardProps> = ({ portfolio, setActiveTab }) => {
                         <td className={`px-6 lg:px-10 py-4 lg:py-8 text-right font-mono text-sm font-black ${ isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
                           {isUp ? '+' : ''}{(a.lastChange || 0).toFixed(2)}%
                         </td>
-                        <td className={`px-6 lg:px-10 py-4 lg:py-8 text-right font-mono text-sm font-black ${ (a.pl1d || 0) >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                          ${(a.pl1d || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        <td className="px-6 lg:px-10 py-4 lg:py-8 text-right font-mono text-sm font-black text-white">
+                          ${(a.valuation?.intrinsicValue || a.price).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </td>
+                        <td className={`px-6 lg:px-10 py-4 lg:py-8 text-right font-mono text-sm font-black ${ (a.valuation?.marginOfSafety || 0) >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          {(a.valuation?.marginOfSafety || 0).toFixed(1)}%
                         </td>
                         <td className="px-6 lg:px-10 py-4 lg:py-8 text-right text-base font-black text-white mono">
                           ${mVal.toLocaleString(undefined, { maximumFractionDigits: 0 })}

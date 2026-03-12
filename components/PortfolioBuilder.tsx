@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getAssetMetadata } from '../services/quantEngine';
+import { getAssetMetadata, calculateValuation } from '../services/quantEngine';
 import { fetchRealTimePrice, fetchFinnhubProfile } from '../services/marketDataService';
 import { Asset, PricePoint } from '../types';
 import { 
@@ -35,16 +35,21 @@ const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({ currentAssets, onUp
       const ticker = inputValue.trim().split(' ')[0].toUpperCase();
       if (ticker.length >= 2 && ticker.length <= 5) {
         try {
-          const meta = getAssetMetadata(ticker);
+          const meta = getAssetMetadata(ticker) as any;
           const marketData = await fetchRealTimePrice(ticker);
           if (marketData) {
-            setPreviewAsset({
+            const assetForVal: any = {
               ticker,
               price: marketData.price,
-              lastChange: parseFloat(marketData.changePercent || '0'),
               beta: meta.beta || 1.0,
               volatility: meta.volatility || 0.25,
-              sector: meta.sector || 'Unclassified'
+              sector: meta.sector || 'Unclassified',
+              fundamentals: meta.fundamentals || {}
+            };
+            setPreviewAsset({
+              ...assetForVal,
+              lastChange: parseFloat(marketData.changePercent || '0'),
+              valuation: calculateValuation(assetForVal)
             });
           }
         } catch (e) {
@@ -113,7 +118,7 @@ const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({ currentAssets, onUp
     try {
       const marketData = await fetchRealTimePrice(ticker);
       const profileData = await fetchFinnhubProfile(ticker);
-      const meta = getAssetMetadata(ticker);
+      const meta = getAssetMetadata(ticker) as any;
       
       const price = marketData?.price || (100 + Math.random() * 400);
       const lastChange = marketData?.changePercent ? parseFloat(marketData.changePercent) : (Math.random() * 4 - 2);
@@ -387,6 +392,14 @@ const PortfolioBuilder: React.FC<PortfolioBuilderProps> = ({ currentAssets, onUp
                       <Target size={10} /> Beta Impact
                     </span>
                     <div className="text-sm font-mono font-black text-white">{previewAsset.beta?.toFixed(2)}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-1">
+                      <Target size={10} /> NPV Impact
+                    </span>
+                    <div className="text-sm font-mono font-black text-white">
+                      ${(previewAsset.valuation?.intrinsicValue || previewAsset.price || 0).toFixed(2)}
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest flex items-center gap-1">

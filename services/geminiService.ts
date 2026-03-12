@@ -103,14 +103,17 @@ const notifyQuotaStatus = (exceeded: boolean) => {
   listeners.forEach(l => l(exceeded));
 };
 
-const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> => {
+export const withRetry = async <T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> => {
   try {
     const result = await fn();
     if (quotaExceeded) notifyQuotaStatus(false); // Reset if successful
     return result;
   } catch (error: any) {
-    if (error.message?.includes('429') || error.status === 429) {
-      notifyQuotaStatus(true);
+    const isRateLimit = error.message?.includes('429') || error.status === 429;
+    const isOverloaded = error.message?.includes('503') || error.status === 503 || error.message?.includes('high demand');
+    
+    if (isRateLimit || isOverloaded) {
+      if (isRateLimit) notifyQuotaStatus(true);
       if (retries > 0) {
         await new Promise(resolve => setTimeout(resolve, delay));
         return withRetry(fn, retries - 1, delay * 2);

@@ -1,7 +1,7 @@
 
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { PricePoint } from "../types";
-import { getApiKey } from "./geminiService";
+import { getApiKey, withRetry } from "./geminiService";
 
 const ALPHA_VANTAGE_KEY = process.env.ALPHA_VANTAGE_KEY || 'X7HZP3Y9LYQYF4MD';
 const FINNHUB_KEY = process.env.FINNHUB_KEY || 'd65m7k1r01qiish07ln0d65m7k1r01qiish07lng';
@@ -337,13 +337,13 @@ export const fetchHistoricalDataViaIntelligence = async (ticker: string, days: n
   Format: [{"date": "2024-01-01", "price": 150.00}, ...]`;
 
   try {
-    const response = (await ai.models.generateContent({
+    const response = (await withRetry(() => ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: { 
         tools: [{ googleSearch: {} }]
       }
-    })) as GenerateContentResponse;
+    }))) as GenerateContentResponse;
     
     // Extract JSON from markdown if present
     const text = response.text || "";
@@ -357,6 +357,8 @@ export const fetchHistoricalDataViaIntelligence = async (ticker: string, days: n
   } catch (err: any) {
     if (err.message?.includes('429') || err.status === 429) {
       console.warn(`[MarketData] Quota exceeded for ${ticker} history. Falling back to synthetic.`);
+    } else if (err.message?.includes('503') || err.status === 503) {
+      console.warn(`[MarketData] Gemini overloaded for ${ticker} history. Falling back to synthetic.`);
     } else {
       console.error("Gemini Historical Fetch Error:", err);
     }
@@ -377,13 +379,13 @@ export const fetchPriceViaIntelligence = async (ticker: string): Promise<MarketP
     : `Current price/stats for ${ticker}. Return ONLY JSON: {"price": number, "changePercent": "string", "high24h": number, "low24h": number}`;
 
   try {
-    const response = (await ai.models.generateContent({
+    const response = (await withRetry(() => ai.models.generateContent({
       model: 'gemini-3-flash-preview', // Use a model with search capabilities
       contents: prompt,
       config: { 
         tools: [{ googleSearch: {} }]
       }
-    })) as GenerateContentResponse;
+    }))) as GenerateContentResponse;
     
     const text = response.text || "";
     const jsonStr = text.replace(/```json/g, "").replace(/```/g, "").trim();
@@ -401,6 +403,8 @@ export const fetchPriceViaIntelligence = async (ticker: string): Promise<MarketP
   } catch (err: any) { 
     if (err.message?.includes('429') || err.status === 429) {
       console.warn(`[MarketData] Quota exceeded for ${ticker} price. Falling back to mock.`);
+    } else if (err.message?.includes('503') || err.status === 503) {
+      console.warn(`[MarketData] Gemini overloaded for ${ticker} price. Falling back to mock.`);
     }
     return { price: 0, changePercent: "0.00%", isRealTime: false, source: 'MOCK' };
   }
